@@ -26,5 +26,11 @@
   "bugs": {
     "url": "https://github.com/VityaSchel/destream-api/issues"
   },
-  "homepage": "https://github.com/VityaSchel/destream-api#readme"
+  "homepage": "https://github.com/VityaSchel/destream-api#readme",
+  "dependencies": {
+    "crypto-js": "^4.0.0",
+    "form-urlencoded": "^6.0.4",
+    "node-fetch": "^2.6.1",
+    "ws": "^7.4.6"
+  }
 }
