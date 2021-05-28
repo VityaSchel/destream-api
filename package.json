@@ -1,0 +1,30 @@
+{
+  "name": "destream-api",
+  "version": "1.0.0",
+  "description": "Destream API wrapper for NodeJS with ES6 promises support [BETA]",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VityaSchel/destream-api.git"
+  },
+  "keywords": [
+    "destream",
+    "destream-api",
+    "api",
+    "api-wrapper",
+    "wrapper",
+    "wrapper-api",
+    "sdk",
+    "api-sdk",
+    "sdk-api"
+  ],
+  "author": "vityaschel <vityaschel@utidteam.com> (https://vityaschel.utidteam.com/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/VityaSchel/destream-api/issues"
+  },
+  "homepage": "https://github.com/VityaSchel/destream-api#readme"
+}
