@@ -1,6 +1,6 @@
 {
   "name": "destream-api",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Full featured DeStream API NodeJS wrapper [BETA]",
   "main": "index.js",
   "scripts": {
