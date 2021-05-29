@@ -12,6 +12,14 @@ module.exports = class DeStreamAPI {
     this.baseURI = `https://destream.net/api/v${this.apiVersion}`
   }
 
+  static UserExistsException(api_response) {
+    this.apiResponse = api_response
+  }
+
+  static AccessTokenIncorrect(api_response) {
+    this.apiResponse = api_response
+  }
+
   _getSignature() {
     return sha512(this._clientId+getISO8601Date()+this._clientSecret)
   }
@@ -30,7 +38,7 @@ module.exports = class DeStreamAPI {
       headers: {'Content-Type': 'application/x-www-form-urlencoded'}
     })
     let parsedAPIResponse = await response.json()
-    return { ...parsedAPIResponse }
+    return { ...parsedAPIResponse, http_status: response.status }
   }
 
   async refreshAccessToken(scope, refresh_token) {
@@ -47,7 +55,7 @@ module.exports = class DeStreamAPI {
       headers: {'Content-Type': 'application/x-www-form-urlencoded'}
     })
     let parsedAPIResponse = await response.json()
-    return { ...parsedAPIResponse }
+    return { ...parsedAPIResponse, http_status: response.status }
   }
 
   async getUser(token_type, access_token) {
@@ -56,13 +64,12 @@ module.exports = class DeStreamAPI {
       method: 'GET',
       headers: {
         'X-Api-ClientId': this._clientId,
-        'X-Api-RequestDate': getISO8601Date(),
-        'X-Api-Signature': this._getSignature(),
         'Authorization': `${token_type} ${access_token}`
       }
     })
     let parsedAPIResponse = await response.json()
-    return { ...parsedAPIResponse }
+    if(response.status === 401){ throw DeStreamAPI.AccessTokenIncorrect(parsedAPIResponse) }
+    return { ...parsedAPIResponse, http_status: response.status }
   }
 
   async registerUser(email) {
@@ -79,8 +86,13 @@ module.exports = class DeStreamAPI {
         'X-Api-Signature': this._getSignature()
       }
     })
+
     let parsedAPIResponse = await response.json()
-    return { ...parsedAPIResponse, status: response.status }
+
+    const HTTP_STATUS_USER_EXISTS = 409
+    if(response.status === HTTP_STATUS_USER_EXISTS){ throw new DeStreamAPI.UserExistsException(parsedAPIResponse) }
+
+    return { ...parsedAPIResponse, http_status: response.status }
   }
 
   async getTips(tokens, offset, limit, sinceDate) {
@@ -94,17 +106,16 @@ module.exports = class DeStreamAPI {
       method: 'GET',
       headers: {
         'X-Api-ClientId': this._clientId,
-        'X-Api-RequestDate': getISO8601Date(),
-        'X-Api-Signature': this._getSignature(),
         'Authorization': `${tokens.token_type} ${tokens.access_token}`
       }
     })
     let parsedAPIResponse = await response.json()
+    if(response.status === 401){ throw DeStreamAPI.AccessTokenIncorrect(parsedAPIResponse) }
     if(response.status === 200){
       parsedAPIResponse.next = () => this.getTips(offset+limit, limit, sinceDate)
       parsedAPIResponse.prev = () => this.getTips(Math.max(0, offset-limit), limit, sinceDate)
     }
-    return { ...parsedAPIResponse }
+    return { ...parsedAPIResponse, http_status: response.status }
   }
 
   async getInvoicesPayments(tokens, offset, limit, sinceDate, arrayOfIds) {
@@ -125,11 +136,12 @@ module.exports = class DeStreamAPI {
       }
     })
     let parsedAPIResponse = await response.json()
+    if(response.status === 401){ throw DeStreamAPI.AccessTokenIncorrect(parsedAPIResponse) }
     if(response.status === 200){
-      parsedAPIResponse.next = () => this.getTips(offset+limit, limit, sinceDate)
-      parsedAPIResponse.prev = () => this.getTips(Math.max(0, offset-limit), limit, sinceDate)
+      parsedAPIResponse.next = () => this.getInvoicesPayments(offset+limit, limit, sinceDate)
+      parsedAPIResponse.prev = () => this.getInvoicesPayments(Math.max(0, offset-limit), limit, sinceDate)
     }
-    return { ...parsedAPIResponse }
+    return { ...parsedAPIResponse, http_status: response.status }
   }
 
   subscribeToEvents(access_token, callback) {
@@ -163,7 +175,11 @@ module.exports = class DeStreamAPI {
       }
     })
     let parsedAPIResponse = await response.json()
-    return { ...parsedAPIResponse }
+    return { ...parsedAPIResponse, http_status: response.status }
+  }
+
+  validateSignature(body, receivedSignature) {
+    return sha512(body+this._clientSecret) === receivedSignature
   }
 }
 

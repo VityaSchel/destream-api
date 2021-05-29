@@ -1,4 +1,4 @@
-# DeStream-API — Full featured DeStream API NodeJS wrapper
+# DeStream-API — Full featured DeStream API NodeJS wrapper [BETA]
 
 destream-api currently supports:
 
@@ -8,6 +8,81 @@ destream-api currently supports:
 - getting latest donations with pagination support (.next(), .prev() functions on result), limit, offset, date-filtering
 - creating invoices (filled donation forms) and getting information about latest invoices
 - subscribing to events on websocket server such as new donations
+
+## Code with/without using destream-api library
+
+### Refresh Access Token with hardcoded refresh token
+
+```javascript
+/* Without using destream-api */
+
+const fetch = require('node-fetch')
+const formurlencoded = require('form-urlencoded')
+
+let params = formurlencoded({
+  grant_type: 'refresh_token',
+  client_id: 12345,
+  client_secret: 'secret-secret',
+  scope: 'profile+tips',
+  refresh_token: 'refresh_token'
+})
+
+fetch(`https://destream.net/api/v2/oauth2/token?${params}`, {
+  method: 'POST',
+  headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+})
+```
+
+```javascript
+/* Using destream-api */
+
+const DeStreamAPI = require('destream-api')
+let destream = new DeStreamAPI({clientId: '12345', clientSecret: 'secret-secret'})
+destream.refreshAccessToken('profile+tips', 'refresh_token' })
+```
+
+### Getting an array of all tips
+
+```javascript
+/* Without using destream-api */
+
+const fetch = require('node-fetch')
+
+const limit = 10; let tipsArray = [], offset = 0;
+while(true){
+  fetch(`https://destream.net/api/v2/users/tips?offset=${offset}`, {
+    method: 'GET',
+    headers: {
+      'X-Api-ClientId': '12345',
+      'Authorization': `access_token jahs62d123`
+    }
+  }).then(result => result.json()).then(result => {
+    if(result.data.length === 0){
+      break;
+    } else {
+      tipsArray.push(...result.data)
+    }
+    offset += limit
+  })
+}
+```
+
+```javascript
+/* Using destream-api */
+
+const DeStreamAPI = require('destream-api')
+
+let destream = new DeStreamAPI({clientId: '12345', clientSecret: 'secret-secret'})
+
+let tipsArray = []
+let tips = await destream.getTips({ tokenType: 'access_token', access_token: 'jahs62d123' })
+while(tips.next){
+  let tips = await tips.next()
+  tipsArray.push(...tips.data)
+}
+```
+
+[More examples](/examples/)
 
 ## Installation
 
@@ -22,6 +97,8 @@ $ yarn add destream-api
 ```
 
 ## Usage
+
+Each method except for subscribeToEvents() and validateSignature() has `http_status` property in returned object; object is parsed JSON response.
 
 ```javascript
 const DeStreamAPI = require('destream-api')
@@ -47,7 +124,7 @@ Exchanges authorization code from oauth to access token, refresh token, token ty
 Example usage:
 
 ```javascript
-let { access_token, refresh_token, token_type } = await destream.getTokensFromCode('lk12j3a1p', 'https://destream.ru/')
+let { access_token, refresh_token, token_type, http_status } = await destream.getTokensFromCode('lk12j3a1p', 'https://destream.ru/')
 ```
 
 #### async refreshAccessToken(scope, refresh_token)
@@ -57,14 +134,14 @@ Refreshes access token so it won't expire.
 Example usage:
 
 ```javascript
-let { access_token, refresh_token, token_type } = await destream.refreshAccessToken('profile+tips', '2QwlfWHU7OYs')
+let { access_token, refresh_token, token_type, http_status } = await destream.refreshAccessToken('profile+tips', '2QwlfWHU7OYs')
 ```
 
 ### Users
 
 #### async getUser(token_type, access_token)
 
-Gets user which gave your app access to its account.
+Gets user which gave your app access to its account. If Access Token expired or incorrect, will throw DeStreamAPI.AccessTokenIncorrect exception for 401 http status with API response included in `apiResponse` property in it.
 
 Example usage:
 
@@ -73,25 +150,14 @@ let { data } = await destream.getUser('token_type', '3jjprwOCd1Gi')
 console.log(data.nickname, data.email)
 ```
 
-#### async getTokensFromCode(authorizationCode, redirectUri)
-
-Exchanges authorization code from oauth to access token, refresh token, token type.
-
-Example usage:
-
-```javascript
-let { access_token, refresh_token, token_type } = await destream.getTokensFromCode('lk12j3a1p', 'https://destream.ru/')
-```
-
 #### async registerUser(email)
 
-Register new user on destream with specified email.
+Register new user on destream with specified email. If user exists, throws an DeStreamAPI.UserExistsException exception with API response included in it in `apiResponse` property.
 
 Example usage:
 
 ```javascript
-let newUser = await destream.registerUser('help@gmail.com')
-if(newUser.status === 409) { throw 'User exists!' }
+let { http_status } = await destream.registerUser('help@gmail.com')
 console.log('User created!', newUser.data.user_id)
 ```
 
@@ -99,7 +165,9 @@ console.log('User created!', newUser.data.user_id)
 
 #### async getTips(tokens, offset, limit, sinceDate)
 
-Gets latest tips. Tokens is an object: { token_type: 'string', access_token: 'string' }; Everything else is optional: offset and limit are Numbers; sinceDate is Date object
+Gets latest tips. Tokens is an object: `{ token_type: 'string', access_token: 'string' }`; Everything else is optional: offset and limit are Numbers; sinceDate is Date object
+
+If Access Token expired or incorrect, will throw DeStreamAPI.AccessTokenIncorrect exception for 401 http status with API response included in `apiResponse` property in it.
 
 Example usage:
 
@@ -108,7 +176,7 @@ let { data, total } = await destream.getTips({'token_type', '3jjprwOCd1Gi'})
 console.log('You have', total, 'tips with total amount sum of', data.reduce((prev, cur) => prev+cur.amount, 0), '!')
 ```
 
-#### async subscribeToEvents(access_token, callback)
+#### subscribeToEvents(access_token, callback)
 
 Subscribes you to websocket server which sends you messages such as donationReceived. Callback function is called every time with exactly 1 argument: message text.
 
@@ -137,11 +205,29 @@ console.log('Invoice with', invoice.data.payment_id, 'created. Now please go to'
 
 #### async getInvoicesPayments(tokens, offset, limit, sinceDate, arrayOfIds)
 
-Gets information about created invoices. Tokens is an object: { token_type: 'string', access_token: 'string' }; Everything else is optional: offset and limit are Numbers; sinceDate is Date object; arrayOfIds must be an array of numbers (payment_ids)
+Gets information about created invoices. Tokens is an object: `{ token_type: 'string', access_token: 'string' }`; Everything else is optional: offset and limit are Numbers; sinceDate is Date object; arrayOfIds must be an array of numbers (payment_ids)
+
+If Access Token expired or incorrect, will throw DeStreamAPI.AccessTokenIncorrect exception for 401 http status with API response included in `apiResponse` property in it.
 
 Example usage:
 
 ```javascript
 let tenCreatedInvoices = await destream.getInvoicesPayments({'token_type', '3jjprwOCd1Gi'})
 console.log('You created these invoices: ', ...tenCreatedInvoices.data.map(invoice => invoice.payment_id))
+```
+
+### Notifications on webhook
+
+You have to setup server by yourself, but this library provides useful methods for webhook.
+
+#### validateSignature(body, receivedSignature)
+
+Concatenates body with clientSecret and hashes to SHA512. Returns true if equal to receivedSignature, false otherwise.
+
+Example usage:
+
+```javascript
+if(!destream.validateSignature(req.body, req.headers['X-Signature'])){
+  throw 'Signature invalid!!'
+}
 ```

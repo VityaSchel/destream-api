@@ -1,7 +1,7 @@
 {
   "name": "destream-api",
-  "version": "1.0.2",
-  "description": "Destream API wrapper for NodeJS with ES6 promises support [BETA]",
+  "version": "1.0.3",
+  "description": "Full featured DeStream API NodeJS wrapper [BETA]",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
