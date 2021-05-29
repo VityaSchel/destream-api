@@ -84,7 +84,7 @@ module.exports = class DeStreamAPI {
   }
 
   async getTips(tokens, offset, limit, sinceDate) {
-    const userInfoEndpoint = `${this.baseURI}/users`
+    const userInfoEndpoint = `${this.baseURI}/payments`
     let params = formurlencoded({
       offset: offset ?? 0,
       limit: Math.max(0, Math.min(30, limit ?? 10)),
