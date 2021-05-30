@@ -192,9 +192,20 @@ destream.subscribeToEvents('lk12j3a1p', message => {
 
 I call it invoices because it is literally invoice: user is redirected directly to pay page. No forms needed to be filled by user.
 
-#### async createInvoice(user_id, amount, currency, message, success_url, fail_url, additional_data)
+#### async createInvoice(user_id, amount, currency, optionalData)
 
-Creates an invoice with specified parameters. All optional but 3: user id, amount and currency. additional_data must be a string.
+Creates an invoice with specified parameters. All arguments but `optionalData` are required;
+
+Optional data is an object in which every property is optional. If you choose to add any property, it will be passed to the DeStream API endpoint.
+
+```javascript
+{
+  message: string;
+  success_url: string;
+  fail_url: string;
+  additional_data: string;
+}
+```
 
 Example usage:
 

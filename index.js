@@ -154,7 +154,7 @@ module.exports = class DeStreamAPI {
     ws.on('message', callback)
   }
 
-  async createInvoice(user_id, amount, currency, message, success_url, fail_url, additional_data) {
+  async createInvoice(user_id, amount, currency, optionalData) {
     const registerUserEndpoint = `${this.baseURI}/payments`
     let response = await fetch(registerUserEndpoint, {
       method: 'POST',
@@ -162,10 +162,7 @@ module.exports = class DeStreamAPI {
         user_id: user_id,
         amount: amount,
         currency: currency,
-        ...(message && {message: message})
-        ...(success_url && {success_url: success_url})
-        ...(fail_url && {fail_url: fail_url})
-        ...(additional_data && {additional_data: additional_data})
+        ...optionalData
       }),
       headers: {
         'Content-Type': 'application/json',
