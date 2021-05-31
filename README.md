@@ -129,12 +129,12 @@ let { access_token, refresh_token, token_type, http_status } = await destream.ge
 
 #### async refreshAccessToken(scope, refresh_token)
 
-Refreshes access token so it won't expire.
+Refreshes access token so it won't expire. Be aware that you have to use value from `scope` field in response with your tokens. So don't use `+` as delimiter of scopes, use `,` instead.
 
 Example usage:
 
 ```javascript
-let { access_token, refresh_token, token_type, http_status } = await destream.refreshAccessToken('profile+tips', '2QwlfWHU7OYs')
+let { access_token, refresh_token, token_type, http_status } = await destream.refreshAccessToken('profile,tips', '2QwlfWHU7OYs')
 ```
 
 ### Users
@@ -146,7 +146,7 @@ Gets user which gave your app access to its account. If Access Token expired or 
 Example usage:
 
 ```javascript
-let { data } = await destream.getUser('token_type', '3jjprwOCd1Gi')
+let { data } = await destream.getUser('Bearer', '3jjprwOCd1Gi')
 console.log(data.nickname, data.email)
 ```
 
@@ -157,7 +157,7 @@ Register new user on destream with specified email. If user exists, throws an De
 Example usage:
 
 ```javascript
-let { http_status } = await destream.registerUser('help@gmail.com')
+let { newUser, http_status } = await destream.registerUser('help@gmail.com')
 console.log('User created!', newUser.data.user_id)
 ```
 
@@ -172,7 +172,7 @@ If Access Token expired or incorrect, will throw DeStreamAPI.AccessTokenIncorrec
 Example usage:
 
 ```javascript
-let { data, total } = await destream.getTips({'token_type', '3jjprwOCd1Gi'})
+let { data, total } = await destream.getTips({ token_type: 'Bearer', access_token: '3jjprwOCd1Gi'})
 console.log('You have', total, 'tips with total amount sum of', data.reduce((prev, cur) => prev+cur.amount, 0), '!')
 ```
 
@@ -192,6 +192,8 @@ destream.subscribeToEvents('lk12j3a1p', message => {
 
 I call it invoices because it is literally invoice: user is redirected directly to pay page. No forms needed to be filled by user.
 
+**User can change any parameters in payment URL (such as amount, currency, message), so be sure to always compare received amount with requested!**
+
 #### async createInvoice(user_id, amount, currency, optionalData)
 
 Creates an invoice with specified parameters. All arguments but `optionalData` are required;
@@ -210,7 +212,7 @@ Optional data is an object in which every property is optional. If you choose to
 Example usage:
 
 ```javascript
-let invoice = await destream.createInvoice(81923, 100, 'RUB')
+let invoice = await destream.createInvoice('eb4abb4a75ea408bb5af8f9f98a406cc', 100, 'RUB')
 console.log('Invoice with', invoice.data.payment_id, 'created. Now please go to', invoice.data.payment_url)
 ```
 
@@ -223,7 +225,7 @@ If Access Token expired or incorrect, will throw DeStreamAPI.AccessTokenIncorrec
 Example usage:
 
 ```javascript
-let tenCreatedInvoices = await destream.getInvoicesPayments({'token_type', '3jjprwOCd1Gi'})
+let tenCreatedInvoices = await destream.getInvoicesPayments({ token_type: 'Bearer', access_token: '3jjprwOCd1Gi'})
 console.log('You created these invoices: ', ...tenCreatedInvoices.data.map(invoice => invoice.payment_id))
 ```
 

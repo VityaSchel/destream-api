@@ -10,6 +10,7 @@ module.exports = class DeStreamAPI {
     this.apiVersion = config.apiVersion ?? 2
 
     this.baseURI = `https://destream.net/api/v${this.apiVersion}`
+    this.baseURIwebsocket = `https://destream.net/ws/v${this.apiVersion}`
   }
 
   static UserExistsException(api_response) {
@@ -68,7 +69,7 @@ module.exports = class DeStreamAPI {
       }
     })
     let parsedAPIResponse = await response.json()
-    if(response.status === 401){ throw DeStreamAPI.AccessTokenIncorrect(parsedAPIResponse) }
+    if(response.status === 401){ console.error('DeStreamAPI error', 'AccessTokenIncorrect', parsedAPIResponse); throw DeStreamAPI.AccessTokenIncorrect(parsedAPIResponse) }
     return { ...parsedAPIResponse, http_status: response.status }
   }
 
@@ -90,7 +91,7 @@ module.exports = class DeStreamAPI {
     let parsedAPIResponse = await response.json()
 
     const HTTP_STATUS_USER_EXISTS = 409
-    if(response.status === HTTP_STATUS_USER_EXISTS){ throw new DeStreamAPI.UserExistsException(parsedAPIResponse) }
+    if(response.status === HTTP_STATUS_USER_EXISTS){ console.error('DeStreamAPI error', 'UserExistsException', parsedAPIResponse); throw new DeStreamAPI.UserExistsException(parsedAPIResponse) }
 
     return { ...parsedAPIResponse, http_status: response.status }
   }
@@ -110,10 +111,10 @@ module.exports = class DeStreamAPI {
       }
     })
     let parsedAPIResponse = await response.json()
-    if(response.status === 401){ throw DeStreamAPI.AccessTokenIncorrect(parsedAPIResponse) }
+    if(response.status === 401){ console.error('DeStreamAPI error', 'AccessTokenIncorrect', parsedAPIResponse); throw DeStreamAPI.AccessTokenIncorrect(parsedAPIResponse) }
     if(response.status === 200){
-      parsedAPIResponse.next = () => this.getTips(offset+limit, limit, sinceDate)
-      parsedAPIResponse.prev = () => this.getTips(Math.max(0, offset-limit), limit, sinceDate)
+      parsedAPIResponse.next = async () => await this.getTips(tokens, (offset ?? 0)+(limit ?? 0), limit, sinceDate)
+      parsedAPIResponse.prev = async () => await this.getTips(tokens, Math.max(0, (offset ?? 0)-(limit ?? 0)), limit, sinceDate)
     }
     return { ...parsedAPIResponse, http_status: response.status }
   }
@@ -136,21 +137,23 @@ module.exports = class DeStreamAPI {
       }
     })
     let parsedAPIResponse = await response.json()
-    if(response.status === 401){ throw DeStreamAPI.AccessTokenIncorrect(parsedAPIResponse) }
+    if(response.status === 401){ console.error('DeStreamAPI error', 'AccessTokenIncorrect', parsedAPIResponse); throw DeStreamAPI.AccessTokenIncorrect(parsedAPIResponse) }
     if(response.status === 200){
-      parsedAPIResponse.next = () => this.getInvoicesPayments(offset+limit, limit, sinceDate)
-      parsedAPIResponse.prev = () => this.getInvoicesPayments(Math.max(0, offset-limit), limit, sinceDate)
+      parsedAPIResponse.next = async () => await this.getInvoicesPayments(tokens, offset+limit, limit, sinceDate)
+      parsedAPIResponse.prev = async () => await this.getInvoicesPayments(tokens, Math.max(0, offset-limit), limit, sinceDate)
     }
     return { ...parsedAPIResponse, http_status: response.status }
   }
 
   subscribeToEvents(access_token, callback) {
-    const websocketEndpoint = `${this.baseURI}/donations`
+    const websocketEndpoint = `${this.baseURIwebsocket}/donations`
     let params = formurlencoded({
       client_id: this._clientId,
       access_token: access_token
     })
-    const ws = new WebSocket(`${websocketEndpoint}?${params}`)
+    let websocketURL = `${websocketEndpoint}?${params}`
+    console.log(websocketURL)
+    const ws = new WebSocket(websocketURL)
     ws.on('message', callback)
   }
 
@@ -183,7 +186,7 @@ module.exports = class DeStreamAPI {
 const getISO8601Date = (date) => {
   const o0 = s => (`0${s}`).substr(-2)
 
-  let date = date ?? new Date()
+  date = date ?? new Date()
 
   let year = date.getFullYear()
   let month = o0(date.getMonth()+1)
